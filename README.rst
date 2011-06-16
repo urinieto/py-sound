@@ -51,7 +51,7 @@ Interface
 Clip
 ----
 
-The primary interface for the library is the =lmj.sound.Clip= class. Clips can
+The primary interface for the library is the **lmj.sound.Clip** class. Clips can
 be loaded from and saved to disk (in any format that the sndfile library
 supports). Resampling is reasonably smart. You can also encode and decode a clip
 using FFT or a `matching pursuit`_
@@ -61,9 +61,9 @@ using FFT or a `matching pursuit`_
 Noise
 -----
 
-You can generate white and pink noise easily with =lmj.noise.white= or
-=lmj.noise.pink=, respectively. Did I mention that pink noise is pretty rad ? It
-is.
+You can generate white and pink noise easily with **lmj.noise.white** or
+**lmj.noise.pink**, respectively. Did I mention that pink noise is pretty rad ?
+It is.
 
 Repertoire
 ----------
