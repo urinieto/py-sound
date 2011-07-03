@@ -23,3 +23,4 @@
 import noise
 from repertoire import Repertoire
 from sound import Clip, load_clip, CachedLoader
+from gammatone import Gammatone, Gammachirp
