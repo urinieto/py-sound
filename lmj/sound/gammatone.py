@@ -45,18 +45,6 @@ class Gammatone(object):
         env = numpy.exp(-TAU * self.bandwidth * t)
         return t ** (self.order - 1) * env * osc
 
-    def itertone(self, resolution=1., scale=1., offset=0.):
-        '''Generate gammatone values.
-
-        resolution: Increment the time value by this constant each sample.
-        scale: Scale the amplitude of the output by this value.
-        offset: Add this offset to the scaled output.
-        '''
-        t = 0
-        while True:
-            t += resolution
-            yield scale * self(t) + offset
-
 
 class Gammachirp(Gammatone):
     '''A gammachirp is a type of gammatone with a frequency asymmetry.'''
