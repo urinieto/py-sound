@@ -28,9 +28,8 @@ import time
 import numpy
 import glumpy
 import optparse
-import multiprocessing
-
 import lmj.sound
+import multiprocessing
 
 FLAGS = optparse.OptionParser()
 FLAGS.add_option('', '--sample-rate', type=int, default=22050, metavar='N',
@@ -45,8 +44,8 @@ FLAGS.add_option('', '--min-power', type=float, default=1e-7, metavar='N',
                  help='set the bottom of the dynamic range to N (1e-7)')
 FLAGS.add_option('', '--range', type=float, default=10, metavar='N',
                  help='set the dynamic range to N (10)')
-FLAGS.add_option('', '--play', action='store_true',
-                 help='play the sound while displaying it')
+FLAGS.add_option('', '--silent', action='store_true',
+                 help='do not play the sound while displaying it')
 FLAGS.add_option('', '--phase', action='store_true',
                  help='default to the phase spectrum view')
 FLAGS.add_option('', '--cepstrum', action='store_true',
@@ -144,7 +143,7 @@ if __name__ == '__main__':
         I.update()
         window.draw()
 
-    if opts.play:
+    if not opts.silent:
         player = multiprocessing.Process(target=clip.play)
         player.start()
 
