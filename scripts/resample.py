@@ -28,7 +28,7 @@ import logging
 import optparse
 import multiprocessing
 
-import sound
+import lmj.sound
 
 FLAGS = optparse.OptionParser()
 FLAGS.add_option('-r', '--sample-rate', default=22050, type=float, metavar='N',
@@ -41,7 +41,7 @@ SAMPLE_RATE = None
 OUTPUT = None
 
 def resample(filename):
-    sound.load_clip(filename, SAMPLE_RATE).save(
+    lmj.sound.load_clip(filename, SAMPLE_RATE).save(
         os.path.join(OUTPUT, os.path.basename(filename)))
 
 
