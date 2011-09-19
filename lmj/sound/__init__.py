@@ -21,6 +21,44 @@
 '''A Python library of sorts for manipulating sound data.'''
 
 import noise
+from sound import Clip
 from repertoire import Repertoire
-from sound import Clip, load_clip, CachedLoader
 from gammatone import Gammatone, Gammachirp
+
+
+def load_clip(filename, sample_rate=None):
+    '''Return a sound clip with some standard preprocessing applied.'''
+    clip = Clip(filename)
+    if sample_rate != clip.sample_rate:
+        if clip.sample_rate > sample_rate * 1.2:
+            clip.set_sample_rate(sample_rate * 1.2)
+        clip.lowpass_filter(sample_rate / 2.5, sample_rate / 2.2)
+        clip.set_sample_rate(sample_rate)
+    clip.normalize()
+    return clip
+
+
+class CachedLoader(dict):
+    '''Cache loaded sound clips in memory.
+
+    To use, create an instance of this object and then call it like you would
+    call load_clip.
+    '''
+
+    def __init__(self, maxlen=256):
+        '''Initialize the cache with a maximum clip count.'''
+        import collections
+        self._maxlen = maxlen
+        self._lru = collections.deque(maxlen=maxlen)
+
+    def __call__(self, filename, sample_rate=None):
+        '''Retrieve a clip, either from memory or from disk.'''
+        if filename in self:
+            self._lru.remove(filename)
+        else:
+            clip = load_clip(filename, sample_rate)
+            if len(self._lru) == self._maxlen:
+                del self[self._lru[0]]
+            self[filename] = clip
+        self._lru.append(filename)
+        return self[filename]

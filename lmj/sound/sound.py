@@ -187,6 +187,11 @@ class Clip(object):
             n = abs(self.samples).max()
             play(self.samples / (n if n > 1 else 1), self.sample_rate)
 
+    def specgram(self, *args, **kwargs):
+        '''Generate a spectrogram of this clip using matplotlib.'''
+        from matplotlib import pyplot
+        pyplot.specgram(self.samples, *args, **kwargs)
+
     def save(self, filename):
         '''Write the data for this clip to a WAV file on disk.'''
         snd = Sndfile(filename, 'w', Format('wav'), 1, self.sample_rate)
@@ -246,40 +251,3 @@ class Clip(object):
             codebook.encode(self.samples.copy(), min_coeff, max_num_coeffs),
             self.shape)
         return Clip(samples=samples, sample_rate=self.sample_rate)
-
-
-def load_clip(filename, sample_rate=None):
-    '''Return a sound clip with some standard preprocessing applied.'''
-    clip = Clip(filename)
-    if sample_rate != clip.sample_rate:
-        if clip.sample_rate > sample_rate * 1.2:
-            clip.set_sample_rate(sample_rate * 1.2)
-        clip.lowpass_filter(sample_rate / 2.5, sample_rate / 2.2)
-        clip.set_sample_rate(sample_rate)
-    clip.normalize()
-    return clip
-
-
-class CachedLoader(dict):
-    '''Cache loaded sound clips in memory.
-
-    To use, create an instance of this object and then call it like you would
-    call load_clip.
-    '''
-
-    def __init__(self, maxlen=256):
-        '''Initialize the cache with a maximum clip count.'''
-        self._maxlen = maxlen
-        self._lru = collections.deque(maxlen=maxlen)
-
-    def __call__(self, filename, sample_rate=None):
-        '''Retrieve a clip, either from memory or from disk.'''
-        if filename in self:
-            self._lru.remove(filename)
-        else:
-            clip = load_clip(filename, sample_rate)
-            if len(self._lru) == self._maxlen:
-                del self[self._lru[0]]
-            self[filename] = clip
-        self._lru.append(filename)
-        return self[filename]
