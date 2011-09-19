@@ -24,37 +24,45 @@ import numpy
 
 TAU = 2 * numpy.pi
 
+
 def erb(f):
     '''Return the equivalent rectangular bandwidth (ERB) of frequency f.'''
     return 0.1039 * f + 24.7
 
 
-class Gammatone(object):
-    '''A gammatone is a simple sinusoid with a gamma function envelope.'''
+def Gammachirp(center_freq, bandwidth=erb, chirp=0., order=4, phase=0.):
+    '''A gammachirp is a of gammatone with a frequency asymmetry.
 
-    def __init__(self, center_freq, bandwidth=erb, order=2, phase=0.):
-        '''Create a gammatone with a fixed frequency, bandwidth, order, and phase.'''
-        self.center_freq = center_freq
-        self.bandwidth = bandwidth(center_freq) if callable(bandwidth) else bandwidth
-        self.order = order
-        self.phase = phase
+    center_freq: The primary frequency of the gammatone, in Hz.
+    bandwidth: The "duration" of the impulse response of the gammatone.
+    chirp: The degree of frequency asymmetry in the chirp.
+    order: The slope of the impulse response envelope.
+    phase: The relative offset of the sinusoid within the envelope.
 
-    def __call__(self, t):
+    The gammatones we generate have amplitude 1. Rescale the output manually to
+    use a different amplitude.
+    '''
+    bandwidth = bandwidth(center_freq) if callable(bandwidth) else bandwidth
+    def tone(t):
         '''Get the response of this tone at a specific point in time.'''
-        osc = numpy.cos(TAU * self.center_freq * t + self.phase)
-        env = numpy.exp(-TAU * self.bandwidth * t)
-        return t ** (self.order - 1) * env * osc
+        bend = 0.
+        if chirp > 0:
+            bend = chirp * numpy.log(t)
+        osc = numpy.cos(TAU * center_freq * t + phase + bend)
+        env = numpy.exp(-TAU * bandwidth * t)
+        return t ** (order - 1) * env * osc
+    return tone
 
 
-class Gammachirp(Gammatone):
-    '''A gammachirp is a type of gammatone with a frequency asymmetry.'''
+def Gammatone(center_freq, bandwidth=erb, order=4, phase=0.):
+    '''A gammatone is a simple sinusoid with a gamma function envelope.
 
-    def __init__(self, center_freq, bandwidth=erb, order=2, chirp=0.):
-        '''Initialize this chirp with a frequency and a chirp "strength".'''
-        super(Gammachirp, self).__init__(center_freq, bandwidth, order)
-        self.chirp = chirp
+    center_freq: The primary frequency of the gammatone, in Hz.
+    bandwidth: The "duration" of the impulse response of the gammatone.
+    order: The slope of the impulse response envelope.
+    phase: The relative offset of the sinusoid within the envelope.
 
-    def __call__(self, t):
-        '''Get the response of this chirp at a specific point in time.'''
-        self.phase = self.chirp * numpy.log(t)
-        return super(Gammachirp, self).__call__(t)
+    The gammatones we generate have amplitude 1. Rescale the output manually to
+    use a different amplitude.
+    '''
+    return Gammachirp(center_freq, bandwidth, order=order, phase=phase)
