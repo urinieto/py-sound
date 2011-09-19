@@ -20,10 +20,11 @@
 
 '''Code for generating white and pink noise.'''
 
+import numpy
 import numpy.random as rng
 
 
-def white():
+def iterwhite():
     '''Generate a sequence of samples of white noise.
 
     Generates a never-ending sequence of floating-point values.
@@ -33,22 +34,22 @@ def white():
             yield n
 
 
-def pink(size=10):
+def iterpink(depth=20):
     '''Generate a sequence of samples of pink noise.
 
     Based on the Voss-McCartney algorithm, discussion and code examples at
     http://www.firstpr.com.au/dsp/pink-noise/
 
-    size: Use this many samples of white noise to calculate the output. A higher
-      number is slower to run, but renders low frequencies with more correct
-      power spectra.
+    depth: Use this many samples of white noise to calculate the output. A
+      higher number is slower to run, but renders low frequencies with more
+      correct power spectra.
 
     Generates a never-ending sequence of floating-point values. Any continuous
     set of these samples will tend to have a 1/f power spectrum.
     '''
-    values = rng.randn(size)
-    smooth = rng.randn(size)
-    source = rng.randn(size)
+    values = rng.randn(depth)
+    smooth = rng.randn(depth)
+    source = rng.randn(depth)
     sum = values.sum()
     i = 0
     while True:
@@ -57,10 +58,10 @@ def pink(size=10):
         # advance the index by 1. if the index wraps, generate noise to use in
         # the calculations, but do not update any of the pink noise values.
         i += 1
-        if i == size:
+        if i == depth:
             i = 0
-            smooth = rng.randn(size)
-            source = rng.randn(size)
+            smooth = rng.randn(depth)
+            source = rng.randn(depth)
             continue
 
         # count trailing zeros in i
@@ -73,10 +74,37 @@ def pink(size=10):
         values[c] = source[i]
 
 
+def _asarray(source, shape):
+    noise = source()
+    if shape is None:
+        return noise.next()
+    count = reduce(operator.mul, shape)
+    return numpy.asarray([noise.next() for _ in range(count)]).reshape(shape)
+
+
+def white(shape=None):
+    '''Generate white noise.
+
+    shape: If given, returns a numpy array of white noise with this shape. If
+      not given, return just one sample of white noise.
+    '''
+    return _asarray(iterwhite, shape)
+
+
+def pink(shape=None, depth=20):
+    '''Generate an array of pink noise.
+
+    shape: If given, returns a numpy array of noise with this shape. If not
+      given, return just one sample of noise.
+    depth: Use this many samples of white noise to calculate pink noise. A
+      higher number is slower to run, but renders low frequencies with more
+      correct power spectra.
+    '''
+    return _asarray(lambda: iterpink(depth), shape)
+
+
 if __name__ == '__main__':
     from matplotlib import pylab
-    import numpy
-    import numpy.fft
 
     k = numpy.ones(100.) / 10.
     def spectrum(s):
@@ -85,11 +113,11 @@ if __name__ == '__main__':
 
     ax = pylab.gca()
 
-    w = white()
+    w = iterwhite()
     ax.loglog(spectrum(w.next() for _ in range(10000)), 'k')
 
     for p, a in enumerate(numpy.logspace(-0.5, 0, 7)):
-        p = pink(2 ** (p + 1))
+        p = iterpink(2 ** (p + 1))
         ax.loglog(spectrum(p.next() for _ in range(10000)), 'r', alpha=a)
 
     ax.grid(linestyle=':')
