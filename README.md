@@ -38,6 +38,8 @@ If you're an Ubuntu person :
 
 Installing the `lmj.sound` package itself does not require any compilation.
 
+[Homebrew]: https://github.com/mxcl/homebrew
+
 ## Interface
 
 ### Clip
