@@ -5,7 +5,7 @@ setuptools.setup(
     version='0.1',
     install_requires=['scipy', 'scikits.audiolab', 'scikits.samplerate'],
     namespace_packages=['lmj'],
-    packages=['lmj.sound'],
+    packages=setuptools.find_packages(),
     author='Leif Johnson',
     author_email='leif@leifjohnson.net',
     description='An assemblage of code for manipulating sound data',
