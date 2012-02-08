@@ -18,7 +18,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-'''Classes for gammatones and gammachirps.'''
+'''Classes for gammatones and gammachirps.
+
+References:
+  "A time-domain, level-dependent auditory filter: The gammachirp"
+    T. Irino and R.D. Patterson, 1997.
+
+  "Using the Gammachirp Filter for Auditory Analysis of Speech"
+    A. Park, 2003.
+
+  https://ccrma.stanford.edu/~jos/bbt/Equivalent_Rectangular_Bandwidth.html
+'''
 
 import numpy
 
@@ -30,7 +40,16 @@ def erb(f):
     return 0.1039 * f + 24.7
 
 
-def Gammachirp(center_freq, bandwidth=erb, chirp=0., order=4, phase=0.):
+def mammal_cochlea_bw(f):
+    '''Return an empirical estimate of the bandwidth for a frequency f.
+
+    This function models the bandwidth curve observed in primary auditory
+    cortical neurons in mammals.
+    '''
+    return 94 + 71 * (f / 1000.) ** 1.5
+
+
+def Gammachirp(center_freq, bandwidth=mammal_cochlea_bw, chirp=0., order=4, phase=0.):
     '''A gammachirp is a of gammatone with a frequency asymmetry.
 
     center_freq: The primary frequency of the gammatone, in Hz.
