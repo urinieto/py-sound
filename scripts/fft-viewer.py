@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     index = 0
 
-    window = glumpy.Window(800, 600, 'Sound Viewer')
+    window = glumpy.Figure()
     player = None
 
     @window.timer(1000.0 / opts.window_msec)
@@ -105,7 +105,7 @@ if __name__ == '__main__':
         cepstrum[idx(1), :] = cepstrum[idx(2), :] = 0
 
     kwargs = dict(interpolation='bicubic',
-                  cmap=glumpy.colormap.IceAndFire,
+                  colormap=glumpy.colormap.IceAndFire,
                   vmin=0,
                   vmax=1)
 
@@ -122,26 +122,26 @@ if __name__ == '__main__':
     @window.event
     def on_draw():
         window.clear()
-        I.blit(0, 0, window.width, window.height)
+        I.draw(x=window.x, y=window.y, z=0, width=window.width, height=window.height)
 
     @window.event
     def on_key_press(key, modifiers):
         global I, player
-        if key in (glumpy.key.ESCAPE, glumpy.key.Q):
+        if key in (glumpy.window.key.ESCAPE, glumpy.window.key.Q):
             if player:
                 player.terminate()
             sys.exit()
-        if key == glumpy.key._1:
+        if key == glumpy.window.key._1:
             I = S
-        if key == glumpy.key._2:
+        if key == glumpy.window.key._2:
             I = P
-        if key == glumpy.key._3:
+        if key == glumpy.window.key._3:
             I = C
 
     @window.event
     def on_idle(dt):
         I.update()
-        window.draw()
+        window.redraw()
 
     if not opts.silent:
         player = multiprocessing.Process(target=clip.play)
@@ -149,4 +149,4 @@ if __name__ == '__main__':
 
     start = time.time()
 
-    window.mainloop()
+    glumpy.show()
