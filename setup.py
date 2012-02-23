@@ -9,7 +9,7 @@ setuptools.setup(
     author='Leif Johnson',
     author_email='leif@leifjohnson.net',
     description='An assemblage of code for manipulating sound data',
-    long_description=open('README.rst').read(),
+    long_description=open('README.md').read(),
     license='MIT',
     keywords=('sound '
               'fft '
