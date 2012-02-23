@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2011 Leif Johnson <leif@leifjohnson.net>
+# Copyright (c) 2011-2012 Leif Johnson <leif@leifjohnson.net>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,13 +20,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+import lmj.sound
+import logging
+import numpy
+import optparse
 import os
 import sys
 import time
-import numpy
-import logging
-import optparse
-import lmj.sound
 
 FLAGS = optparse.OptionParser()
 FLAGS.add_option('-r', '--sample-rate', type=int, default=22050, metavar='N',
@@ -43,11 +43,6 @@ FLAGS.add_option('-c', '--cepstrum', action='store_true',
                  help='output the cepstrum coefficients')
 
 
-def fft_coeffs(clip, window_sec, overlap):
-    for _, samples in clip.iter_windows(window_sec, overlap):
-        yield numpy.fft.rfft(samples)
-
-
 def encode(x):
     return x.tostring().encode('base64').replace('\n', '')
 
@@ -56,12 +51,14 @@ def process(opts, filename):
     clip = lmj.sound.load_clip(filename, opts.sample_rate)
 
     window_sec = opts.window_msec / 1000.
-    overlap = 1. - float(opts.interval_msec) / opts.window_msec
-    windows = clip.length_sec / window_sec / overlap
+    interval_sec = opts.interval_msec / 1000.
+    windows = (clip.length_sec - window_sec) / interval_sec
 
-    start = time.time()
+    fft_coeffs = clip.iter_fft_coeffs(window_sec, interval_sec)
+
     count = 0
-    for count, coeffs in enumerate(fft_coeffs(clip, window_sec, overlap)):
+    start = time.time()
+    for count, (_, coeffs) in enumerate(fft_coeffs):
         if opts.cepstrum:
             coeffs = numpy.fft.rfft(numpy.log(abs(coeffs) ** 2))
         if opts.power:

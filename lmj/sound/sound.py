@@ -1,4 +1,4 @@
-# Copyright (c) 2011 Leif Johnson <leif@leifjohnson.net>
+# Copyright (c) 2011-2012 Leif Johnson <leif@leifjohnson.net>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,11 +20,11 @@
 
 '''Utility classes and methods for processing sound data.'''
 
-import os
-import sys
-import numpy
 import logging
+import numpy
+import os
 import scipy.signal
+import sys
 
 from scikits.audiolab import Format, Sndfile, play
 from scikits.samplerate import resample
@@ -161,21 +161,40 @@ class Clip(object):
             return window * self.samples[offset:offset + n]
         return None
 
-    def iter_windows(self, window_sec, overlap=0.5, window_type='hanning'):
+    def iter_windows(self, window_sec, interval_sec=None, window_type='hanning'):
         '''Iterate over consecutive windows of samples in this clip.
 
         window_sec: The number of seconds of samples to return in each window.
-        overlap: The proportion (in [0, 1]) of overlap in successive windows.
+        interval_sec: The number of seconds worth of samples to skip between the
+          start of each successive window. Defaults to half the window width.
         window_type: A string or tuple describing the type of window to use. See
           the documentation for scipy.signal.get_window for details.
         '''
-        n = int(self.sample_rate * window_sec)
-        o = int(n * (1. - overlap))
-        window = scipy.signal.get_window(window_type, n)
-        offset = 0
-        while offset + n < len(self.samples):
-            yield offset, window * self.samples[offset:offset + n]
-            offset += o
+        width = int(self.sample_rate * window_sec)
+        window = scipy.signal.get_window(window_type, width)
+
+        interval_sec = interval_sec or window_sec / 2.
+        interval = self.sample_rate * interval_sec
+
+        offset = 0.
+        while offset + width < len(self.samples):
+            o = int(offset)
+            yield o, window * self.samples[o:o + width]
+            offset += interval
+
+    def iter_fft_coeffs(self, window_sec, interval_sec=None, window_type='hanning'):
+        '''Iterate over consecutive windows of FFT coefficients in this clip.
+
+        Generates a sequence of (sample offset, coefficients) tuples.
+
+        window_sec: The number of seconds of samples to return in each window.
+        interval_sec: The number of seconds worth of samples to skip between the
+          start of each successive window. Defaults to half the window width.
+        window_type: A string or tuple describing the type of window to use. See
+          the documentation for scipy.signal.get_window for details.
+        '''
+        for o, samples in self.iter_windows(window_sec, interval_sec, window_type):
+            yield o, numpy.fft.rfft(samples)
 
     def play(self):
         '''Play this clip.'''
@@ -210,11 +229,12 @@ class Clip(object):
         return (numpy.linalg.norm(self.samples - other.samples) /
                 numpy.sqrt(len(self)))
 
-    def reconstruct_with_fft(self, window_sec=0.1, overlap=0.5, min_coeff=0.1, d_phase=0.):
+    def reconstruct_with_fft(self, window_sec=0.1, interval_sec=None, min_coeff=0.1, phase_distort=0.):
         '''Reconstruct the sound in this clip using threshold-filtered FFT data.
 
         window_sec: Process sound in windows of this length.
-        overlap: Overlap successive windows by this fraction.
+        interval_sec: The number of seconds worth of samples to skip between the
+          start of each successive window. Defaults to half the window width.
         min_coeff: Set all FFT coefficients less than this magnitude to 0.
         phase_distort: Distort the phase of each coefficient uniformly in the
           interval [-phase_distort, phase_distort].
@@ -222,24 +242,22 @@ class Clip(object):
         Returns a new clip with the reconstructed sound.
         '''
         pd = phase_distort
+        w = int(self.sample_rate * window_sec)
         samples = numpy.zeros(self.shape, self.dtype)
-        for o, w in self.iter_windows(window_sec, overlap):
-            coeffs = numpy.fft.rfft(w)
+        for o, coeffs in self.iter_fft_coeffs(window_sec, interval_sec):
             for i, c in enumerate(coeffs):
                 if abs(c) < min_coeff:
                     coeffs[i] = 0
                 else:
                     t = numpy.angle(c) + numpy.random.uniform(-pd, pd)
                     coeffs[i] = abs(c) * (numpy.cos(t) + numpy.sin(t) * 1j)
-            samples[o:o+len(w)] += numpy.fft.irfft(coeffs)
+            samples[o:o+w] += numpy.fft.irfft(coeffs)
         return Clip(samples=samples, sample_rate=self.sample_rate)
 
-    def reconstruct_with_codebook(self, codebook,
-                                  min_coeff=0., max_num_coeffs=-1,
-                                  window_sec=None, overlap=0.5):
+    def reconstruct_with_codebook(self, codebook, min_coeff=0., max_num_coeffs=-1):
         '''Reconstruct the sound in this clip using a matching pursuit object.
 
-        codebook: An lmj.pursuit.TemporalCodebook instance to do the encoding
+        codebook: An lmj.pursuit.ConvolutionCodebook instance to do the encoding
           and decoding.
         min_coeff: Stop encoding when coefficients fall below this threshold.
         max_num_coeffs: Stop encoding when this many coefficients have been
