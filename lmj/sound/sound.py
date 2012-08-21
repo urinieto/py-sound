@@ -46,7 +46,6 @@ class Clip(object):
         '''
         self.samples = numpy.zeros(1.)
         self.sample_rate = 44100.
-        self.length_sec = 0.
 
         self.filename = filename
         if filename:
@@ -55,7 +54,6 @@ class Clip(object):
             assert 0 < sample_rate
             self.samples = numpy.asarray(samples)
             self.sample_rate = sample_rate
-            self.length_sec = len(self.samples) / self.sample_rate
 
     def __len__(self):
         return len(self.samples)
@@ -83,13 +81,12 @@ class Clip(object):
 
         self.filename = filename
         self.sample_rate = snd.samplerate
-        self.length_sec = len(self.samples) / self.sample_rate
 
         logging.info('%s: read %d frames at %d Hz (%.2f sec)',
                      os.path.basename(self.filename),
                      len(self.samples),
                      self.sample_rate,
-                     self.length_sec)
+                     len(self.samples) / self.sample_rate)
 
     def normalize(self):
         '''Normalize the samples in this clip.
