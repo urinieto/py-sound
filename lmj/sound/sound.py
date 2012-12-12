@@ -110,7 +110,7 @@ class Clip(object):
         z = scipy.signal.filtfilt(b, a, self.samples)
         self.samples = numpy.asarray(z, self.dtype)
         logging.info('%s: lowpass filter at %.2fHz',
-                     os.path.basename(self.filename), pass_freq)
+                     os.path.basename(self.filename), freq)
 
     def set_sample_rate(self, sample_rate):
         '''Set the sample rate for this clip.
