@@ -26,13 +26,12 @@ from repertoire import Repertoire
 from gammatone import Gammatone, Gammachirp
 
 
-def load_clip(filename, sample_rate=None, normalize=True):
+def load_clip(filename, sample_rate=None, normalize=False):
     '''Return a sound clip with some standard preprocessing applied.'''
     clip = Clip(filename)
     if sample_rate != clip.sample_rate:
-        if clip.sample_rate > sample_rate * 1.2:
-            clip.set_sample_rate(sample_rate * 1.2)
-        clip.lowpass_filter(sample_rate / 2.5, sample_rate / 2.2)
+        if sample_rate < clip.sample_rate:
+            clip.lowpass_filter(sample_rate / 2)
         clip.set_sample_rate(sample_rate)
     if normalize:
         clip.normalize()
