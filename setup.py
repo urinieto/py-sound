@@ -3,7 +3,7 @@ import setuptools
 
 setuptools.setup(
     name='lmj.sound',
-    version='0.1.2',
+    version='0.1.3',
     namespace_packages=['lmj'],
     packages=setuptools.find_packages(),
     author='Leif Johnson',
