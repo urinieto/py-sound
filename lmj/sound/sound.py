@@ -99,15 +99,14 @@ class Clip(object):
         logging.info('%s: normalized %d samples',
                      os.path.basename(self.filename), len(self.samples))
 
-    def lowpass_filter(self, pass_freq, order=8):
+    def lowpass_filter(self, freq, order=31):
         '''Lowpass filter the clip to eliminate high frequencies.
 
-        pass_freq: Construct a lowpass filter at this frequency.
+        freq: Construct a lowpass filter with this cutoff frequency.
         order: Build a filter of this order.
         '''
         nyquist = self.sample_rate / 2.0
-        assert 0 < pass_freq < nyquist
-        b, a = scipy.signal.butter(pass_freq / nyquist, order)
+        b, a = scipy.signal.butter(order, freq / nyquist)
         z = scipy.signal.filtfilt(b, a, self.samples)
         self.samples = numpy.asarray(z, self.dtype)
         logging.info('%s: lowpass filter at %.2fHz',
