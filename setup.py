@@ -1,31 +1,23 @@
 import os
 import setuptools
 
-# take description from README.md
-here = os.path.dirname(os.path.abspath(__file__))
-readme = ''
-try:
-    readme = file(os.path.join(here, 'README.md')).read()
-except (OSError, IOError):
-    pass
-
 setuptools.setup(
     name='lmj.sound',
-    version='0.1.1',
-    install_requires=['scipy', 'scikits.audiolab', 'scikits.samplerate'],
+    version='0.1.2',
     namespace_packages=['lmj'],
     packages=setuptools.find_packages(),
     author='Leif Johnson',
     author_email='leif@leifjohnson.net',
     description='An assemblage of code for manipulating sound data',
-    long_description=readme,
+    long_description=open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')).read(),
     license='MIT',
+    url='http://github.com/lmjohns3/py-sound/',
     keywords=('sound '
               'fft '
               'noise '
               'encoding '
               'resampling'),
-    url='http://github.com/lmjohns3/py-sound/',
+    install_requires=['scipy', 'scikits.audiolab', 'scikits.samplerate'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Science/Research',
