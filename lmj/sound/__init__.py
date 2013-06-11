@@ -21,15 +21,18 @@
 '''A Python library of sorts for manipulating sound data.'''
 
 import noise
-from sound import Clip
-from repertoire import Repertoire
-from gammatone import Gammatone, Gammachirp
+from .sound import Clip
+from .repertoire import Repertoire
+from .gammatone import Gammatone, Gammachirp
 
 
 def load_clip(filename, sample_rate=None, normalize=False):
     '''Return a sound clip with some standard preprocessing applied.'''
     clip = Clip(filename)
-    if sample_rate is not None and sample_rate != clip.sample_rate:
+    if sample_rate is not None:
+        while sample_rate < clip.nyquist / 2:
+            clip.lowpass_filter(clip.nyquist / 2)
+            clip.set_sample_rate(clip.nyquist)
         if sample_rate < clip.sample_rate:
             clip.lowpass_filter(sample_rate / 2)
         clip.set_sample_rate(sample_rate)

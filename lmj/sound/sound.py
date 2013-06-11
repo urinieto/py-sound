@@ -69,6 +69,10 @@ class Clip(object):
     def dtype(self):
         return self.samples.dtype
 
+    @property
+    def nyquist(self):
+        return self.sample_rate / 2.
+
     def load(self, filename):
         '''Load sound data from a file on disk.
 
@@ -80,13 +84,10 @@ class Clip(object):
             self.samples = self.samples.mean(axis=-1)
 
         self.filename = filename
-        self.sample_rate = snd.samplerate
-
+        r = self.sample_rate = snd.samplerate
+        n = len(self.samples)
         logging.info('%s: read %d frames at %d Hz (%.2f sec)',
-                     os.path.basename(self.filename),
-                     len(self.samples),
-                     self.sample_rate,
-                     len(self.samples) / self.sample_rate)
+                     os.path.basename(self.filename), n, r, float(n) / r)
 
     def normalize(self):
         '''Normalize the samples in this clip.
@@ -105,27 +106,27 @@ class Clip(object):
         freq: Construct a lowpass filter with this cutoff frequency.
         order: Build a filter of this order.
         '''
-        nyquist = self.sample_rate / 2.0
-        b, a = scipy.signal.butter(order, freq / nyquist)
+        b, a = scipy.signal.butter(order, freq / self.nyquist)
         z = scipy.signal.filtfilt(b, a, self.samples)
         self.samples = numpy.asarray(z, self.dtype)
         logging.info('%s: lowpass filter at %.2fHz',
                      os.path.basename(self.filename), freq)
 
-    def set_sample_rate(self, sample_rate):
+    def set_sample_rate(self, sample_rate, method='sinc_best'):
         '''Set the sample rate for this clip.
 
         sample_rate: The desired sample rate for the clip.
+        method: One of 'linear', 'sinc_fastest', 'sinc_medium', 'sinc_best'.
         '''
         resample_ratio = float(sample_rate) / self.sample_rate
-        if resample_ratio != 1.0:
+        if resample_ratio != 1.:
             self.samples = numpy.asarray(
-                resample(self.samples, resample_ratio, 'sinc_best'),
+                resample(self.samples, resample_ratio, method),
                 self.dtype)
             r = self.sample_rate = sample_rate
             n = len(self.samples)
-            logging.info('%s: resampled %d frames at %d Hz (%.2f sec)',
-                         os.path.basename(self.filename), n, r, n / r)
+            logging.info('%s: resampled to %d frames at %d Hz (%.2f sec)',
+                         os.path.basename(self.filename), n, r, float(n) / r)
 
     def get_window(self, width, offset=0, window_type='hanning'):
         '''Get a slice of samples from this clip as a numpy array.
