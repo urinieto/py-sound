@@ -21,13 +21,12 @@
 '''Utility classes and methods for processing sound data.'''
 
 import logging
-import numpy
+import numpy as np
 import os
+import scikits.audiolab
+import scikits.samplerate
 import scipy.signal
 import sys
-
-from scikits.audiolab import Format, Sndfile, play
-from scikits.samplerate import resample
 
 
 class Clip(object):
@@ -44,7 +43,7 @@ class Clip(object):
         samples: If given, a numpy array containing sound data.
         sample_rate: If samples is not None, this must also be given.
         '''
-        self.samples = numpy.zeros(1.)
+        self.samples = np.zeros(1.)
         self.sample_rate = sample_rate
 
         self.filename = filename
@@ -52,14 +51,14 @@ class Clip(object):
             self.load(filename)
         elif samples is not None:
             assert sample_rate > 0
-            self.samples = numpy.asarray(samples)
+            self.samples = np.asarray(samples)
             self.sample_rate = sample_rate
 
     def __len__(self):
         return len(self.samples)
 
-    def __getitem__(self, slice):
-        return self.samples[slice]
+    def __getitem__(self, slc):
+        return self.samples[slc]
 
     @property
     def shape(self):
@@ -78,7 +77,7 @@ class Clip(object):
 
         filename: The name of the file to load sound data from.
         '''
-        snd = Sndfile(filename)
+        snd = scikits.audiolab.Sndfile(filename)
         self.samples = snd.read_frames(snd.nframes)
         while len(self.shape) > 1:
             self.samples = self.samples.mean(axis=-1)
@@ -108,7 +107,7 @@ class Clip(object):
         '''
         b, a = scipy.signal.butter(order, freq / self.nyquist)
         z = scipy.signal.filtfilt(b, a, self.samples)
-        self.samples = numpy.asarray(z, self.dtype)
+        self.samples = np.asarray(z, self.dtype)
         logging.info('%s: lowpass filter at %.2fHz',
                      os.path.basename(self.filename), freq)
 
@@ -120,8 +119,8 @@ class Clip(object):
         '''
         resample_ratio = float(sample_rate) / self.sample_rate
         if resample_ratio != 1.:
-            self.samples = numpy.asarray(
-                resample(self.samples, resample_ratio, method),
+            self.samples = np.asarray(
+                scikits.samplerate.resample(self.samples, resample_ratio, method),
                 self.dtype)
             r = self.sample_rate = sample_rate
             n = len(self.samples)
@@ -131,27 +130,38 @@ class Clip(object):
     def get_window(self, width, offset=0, window_type='hanning'):
         '''Get a slice of samples from this clip as a numpy array.
 
-        width: The number of samples to include in the window.
-        offset: Offset the window this many samples from the start of the sound.
-        window_type: A string or tuple describing the type of window to use. See
-          the documentation for scipy.signal.get_window for details.
+        Args:
+          width (int): The number of samples to extract.
+
+        Kwargs:
+          offset (int): Offset the first window from the start of the sound.
+          window_type: A string or tuple describing the type of window to use.
+            See the documentation for `scipy.signal.get_window` for details.
+
+        Returns:
+          A windowed array of sound samples.
         '''
         window = scipy.signal.get_window(window_type, width)
-        if offset + n < len(self.samples):
-            return window * self.samples[offset:offset + n]
-        return None
+        if offset + width < len(self.samples):
+            return window * self.samples[offset:offset + width]
+        raise IndexError('%d + %d > %d' % (offset, width, len(self)))
 
     def iter_windows(self, width, offset=0, interval=0.5, window_type='hanning'):
         '''Iterate over consecutive windows of samples in this clip.
 
-        Generates a sequence of (sample offset, samples) tuples.
+        Args:
+          width (int): The number of samples to analyze in each window.
 
-        width: The number of samples to return in each window.
-        offset: Offset the first window from the start of the sound.
-        interval: The proportion of the window width to skip between the start
-          of each successive window. Defaults to half the window width.
-        window_type: A string or tuple describing the type of window to use. See
-          the documentation for scipy.signal.get_window for details.
+        Kwargs:
+          offset (int): Offset the first window from the start of the sound.
+          interval (float): The proportion of the window width to skip between
+            the start of each successive window. Defaults to half the window
+            width.
+          window_type: A string or tuple describing the type of window to use.
+            See the documentation for `scipy.signal.get_window` for details.
+
+        Generates:
+          A sequence of (sample offset, windowed samples) tuples.
         '''
         window = scipy.signal.get_window(window_type, width)
         interval = width * interval
@@ -163,36 +173,63 @@ class Clip(object):
     def iter_fft_coeffs(self, width, offset=0, interval=0.5, window_type='hanning'):
         '''Iterate over consecutive windows of FFT coefficients in this clip.
 
-        Generates a sequence of (sample offset, coefficients) tuples.
+        Args:
+          width (int): The number of samples to analyze in each window.
 
-        width: The number of samples to return in each window.
-        offset: Offset the first window from the start of the sound.
-        interval: The proportion of the window width to skip between the start
-          of each successive window. Defaults to half the window width.
-        window_type: A string or tuple describing the type of window to use. See
-          the documentation for scipy.signal.get_window for details.
+        Kwargs:
+          offset (int): Offset the first window from the start of the sound.
+          interval (float): The proportion of the window width to skip between
+            the start of each successive window. Defaults to half the window
+            width.
+          window_type: A string or tuple describing the type of window to use.
+            See the documentation for `scipy.signal.get_window` for details.
+
+        Generates:
+          A sequence of (sample offset, coefficients) tuples.
         '''
         for o, samples in self.iter_windows(width, offset, interval, window_type):
-            yield o, numpy.fft.rfft(samples)
+            yield o, np.fft.rfft(samples)
+
+    def iter_log_power(self, width, offset=0, interval=0.5, window_type='hanning', base=np.e):
+        '''Iterate over consecutive windows of log-power spectra in this clip.
+
+        Args:
+          width (int): The number of samples to analyze in each window.
+
+        Kwargs:
+          offset (int): Offset the first window from the start of the sound.
+          interval (float): The proportion of the window width to skip between
+            the start of each successive window. Defaults to half the window
+            width.
+          window_type: A string or tuple describing the type of window to use.
+            See the documentation for `scipy.signal.get_window` for details.
+
+        Generates:
+          A sequence of (sample offset, spectrum coefficients) tuples.
+        '''
+        for o, samples in self.iter_windows(width, offset, interval, window_type):
+            yield o, np.fft.rfft(samples) ** 2
 
     def play(self):
-        '''Play this clip.'''
+        '''Play this clip on the current audio device.'''
         if 'darwin' == sys.platform.lower() and self.sample_rate != 48000:
             c = Clip(samples=self.samples, sample_rate=self.sample_rate)
             c.set_sample_rate(48000)
             c.play()
         else:
             n = abs(self.samples).max()
-            play(self.samples / (n if n > 1 else 1), self.sample_rate)
+            scikits.audiolab.play(
+                self.samples / (n if n > 1 else 1), self.sample_rate)
 
     def specgram(self, *args, **kwargs):
         '''Generate a spectrogram of this clip using matplotlib.'''
         from matplotlib import pyplot
-        pyplot.specgram(self.samples, *args, **kwargs)
+        return pyplot.specgram(self.samples, *args, **kwargs)
 
     def save(self, filename):
         '''Write the data for this clip to a WAV file on disk.'''
-        snd = Sndfile(filename, 'w', Format('wav'), 1, self.sample_rate)
+        snd = scikits.audiolab.Sndfile(
+            filename, 'w', scikits.audiolab.Format('wav'), 1, self.sample_rate)
         snd.write_frames(self.samples)
         snd.close()
 
@@ -205,8 +242,7 @@ class Clip(object):
             len(other) != len(self) or
             other.sample_rate != self.sample_rate):
             raise NotImplemented
-        return (numpy.linalg.norm(self.samples - other.samples) /
-                numpy.sqrt(len(self)))
+        return np.sqrt(((self.samples - other.samples) ** 2).mean())
 
     def reconstruct_with_fft(self, width, interval=0.5, min_coeff=0.1, phase_distort=0.):
         '''Reconstruct the sound in this clip using threshold-filtered FFT data.
@@ -221,13 +257,13 @@ class Clip(object):
           interval [-phase_distort, phase_distort].
         '''
         pd = phase_distort
-        samples = numpy.zeros(self.shape, self.dtype)
+        samples = np.zeros(self.shape, self.dtype)
         for o, coeffs in self.iter_fft_coeffs(width, interval):
             for i, c in enumerate(coeffs):
                 if abs(c) < min_coeff:
                     coeffs[i] = 0
                 else:
-                    t = numpy.angle(c) + numpy.random.uniform(-pd, pd)
-                    coeffs[i] = abs(c) * (numpy.cos(t) + numpy.sin(t) * 1j)
-            samples[o:o+w] += numpy.fft.irfft(coeffs)
+                    t = np.angle(c) + np.random.uniform(-pd, pd)
+                    coeffs[i] = abs(c) * (np.cos(t) + np.sin(t) * 1j)
+            samples[o:o+w] += np.fft.irfft(coeffs)
         return Clip(samples=samples, sample_rate=self.sample_rate)
